@@ -9,6 +9,3 @@ Aplicación web para explorar y visualizar los sismos registrados en el Perú a 
 ## ¿Qué puedes hacer en la app?
 - Ver todos los sismos registrados en un gráfico y mapa
 - Filtrar por magnitud, profundidad o década
-
-## Tecnologías usadas
-Python · Streamlit · Pandas · Matplotlib · Pydeck
