@@ -184,7 +184,7 @@ with tab_decada:
 
 
 with tab_richypro:
-    st.subheader("Filtro combinado: Richter + Profundidad")
+    st.subheader("Filtrar por Richter y Profundidad")
 
     col_f1, col_f2 = st.columns(2)
 
@@ -220,7 +220,7 @@ with tab_richypro:
         prof_labels = ", ".join(prof_sel)
 
         if total == 0:
-            st.warning("No hay sismos que cumplan ambos criterios a la vez.")
+            st.warning("No hay sismos que cumplan ambos criterios.")
         else:
             st.success(
                 f"{total:,} sismos con magnitud [{mag_labels}] y profundidad [{prof_labels}]"
