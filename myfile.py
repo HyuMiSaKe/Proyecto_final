@@ -18,12 +18,30 @@ def preparar_mapa(dataframe):
         columns={"LATITUD": "lat", "LONGITUD": "lon"}
     )
 
+# --- Diccionarios de rangos reutilizables ---
+RANGOS_MAG = {
+    "[0, 2)":  lambda d: d[d["MAGNITUD"] < 2],
+    "[2, 3)":  lambda d: d[(d["MAGNITUD"] >= 2) & (d["MAGNITUD"] < 3)],
+    "[3, 4)":  lambda d: d[(d["MAGNITUD"] >= 3) & (d["MAGNITUD"] < 4)],
+    "[4, 5)":  lambda d: d[(d["MAGNITUD"] >= 4) & (d["MAGNITUD"] < 5)],
+    "[5, 6)":  lambda d: d[(d["MAGNITUD"] >= 5) & (d["MAGNITUD"] < 6)],
+    "[6, >)":  lambda d: d[d["MAGNITUD"] >= 6],
+}
 
-tab_todos, tab_richter, tab_prof, tab_decada = st.tabs([
+RANGOS_PROF = {
+    "[0, 200)":   lambda d: d[d["PROFUNDIDAD"] < 200],
+    "[200, 300)": lambda d: d[(d["PROFUNDIDAD"] >= 200) & (d["PROFUNDIDAD"] < 300)],
+    "[300, 400)": lambda d: d[(d["PROFUNDIDAD"] >= 300) & (d["PROFUNDIDAD"] < 400)],
+    "[400, >)":   lambda d: d[d["PROFUNDIDAD"] >= 400],
+}
+
+
+tab_todos, tab_richter, tab_prof, tab_decada, tab_richypro = st.tabs([
     "Todos los sismos",
     "Según la Escala de Richter",
     "Según la Profundidad",
-    "Según la Década"
+    "Según la Década",
+    "Richter y Profundidad"
 ])
 
 with tab_todos:
@@ -49,26 +67,16 @@ with tab_todos:
         st.map(preparar_mapa(df), zoom=3)
 
 
-
 with tab_richter:
     st.subheader("Filtrar por Escala de Richter")
 
     intervalo = st.selectbox(
         "Selecciona un rango de magnitud:",
-        ["[0, 2)", "[2, 3)", "[3, 4)", "[4, 5)", "[5, 6)", "[6, >)"],
+        list(RANGOS_MAG.keys()),
         key="richter"
     )
 
-    rangos = {
-        "[0, 2)": df[df["MAGNITUD"] < 2],
-        "[2, 3)": df[(df["MAGNITUD"] >= 2) & (df["MAGNITUD"] < 3)],
-        "[3, 4)": df[(df["MAGNITUD"] >= 3) & (df["MAGNITUD"] < 4)],
-        "[4, 5)": df[(df["MAGNITUD"] >= 4) & (df["MAGNITUD"] < 5)],
-        "[5, 6)": df[(df["MAGNITUD"] >= 5) & (df["MAGNITUD"] < 6)],
-        "[6, >)": df[df["MAGNITUD"] >= 6],
-    }
-    df_r = rangos[intervalo]
-
+    df_r = RANGOS_MAG[intervalo](df)
     st.caption(f"{len(df_r):,} sismos en el rango {intervalo}")
 
     col1, col2 = st.columns(2)
@@ -97,24 +105,16 @@ with tab_richter:
             st.warning("Sin coordenadas para mostrar.")
 
 
-
 with tab_prof:
     st.subheader("Filtrar por Profundidad")
 
     profundidad = st.selectbox(
         "Selecciona un rango de profundidad (km):",
-        ["[0, 200)", "[200, 300)", "[300, 400)", "[400, >)"],
+        list(RANGOS_PROF.keys()),
         key="profundidad"
     )
 
-    rangos_p = {
-        "[0, 200)":   df[df["PROFUNDIDAD"] < 200],
-        "[200, 300)": df[(df["PROFUNDIDAD"] >= 200) & (df["PROFUNDIDAD"] < 300)],
-        "[300, 400)": df[(df["PROFUNDIDAD"] >= 300) & (df["PROFUNDIDAD"] < 400)],
-        "[400, >)":   df[df["PROFUNDIDAD"] >= 400],
-    }
-    df_p = rangos_p[profundidad]
-
+    df_p = RANGOS_PROF[profundidad](df)
     st.caption(f"{len(df_p):,} sismos con profundidad {profundidad} km")
 
     col1, col2 = st.columns(2)
@@ -141,8 +141,6 @@ with tab_prof:
             st.map(mapa, zoom=3)
         else:
             st.warning("Sin coordenadas para mostrar.")
-
-
 
 
 with tab_decada:
@@ -183,3 +181,94 @@ with tab_decada:
             st.map(mapa, zoom=3)
         else:
             st.warning("Sin coordenadas para mostrar.")
+
+
+with tab_richypro:
+    st.subheader("Filtro combinado: Richter + Profundidad")
+
+    col_f1, col_f2 = st.columns(2)
+
+    with col_f1:
+        mag_sel = st.multiselect(
+            "Rango de magnitud:",
+            list(RANGOS_MAG.keys()),
+            default=list(RANGOS_MAG.keys())[:1],
+            key="combo_mag"
+        )
+
+    with col_f2:
+        prof_sel = st.multiselect(
+            "Rango de profundidad (km):",
+            list(RANGOS_PROF.keys()),
+            default=list(RANGOS_PROF.keys())[:1],
+            key="combo_prof"
+        )
+
+    if not mag_sel or not prof_sel:
+        st.warning("Selecciona al menos un rango de magnitud y uno de profundidad.")
+    else:
+        df_mag = pd.concat(
+            [RANGOS_MAG[m](df) for m in mag_sel]
+        ).drop_duplicates()
+
+        df_combo = pd.concat(
+            [RANGOS_PROF[p](df_mag) for p in prof_sel]
+        ).drop_duplicates()
+
+        total = len(df_combo)
+        mag_labels  = ", ".join(mag_sel)
+        prof_labels = ", ".join(prof_sel)
+
+        if total == 0:
+            st.warning("No hay sismos que cumplan ambos criterios a la vez.")
+        else:
+            st.success(
+                f"{total:,} sismos con magnitud [{mag_labels}] y profundidad [{prof_labels}]"
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Sismos por década**")
+                por_decada = df_combo.groupby("DECADA").size().reset_index(name="Cantidad")
+                por_decada["Década"] = por_decada["DECADA"].astype(int).astype(str) + "s"
+
+                if not por_decada.empty:
+                    fig, ax = plt.subplots(figsize=(5, 3))
+                    ax.plot(
+                        por_decada["Década"],
+                        por_decada["Cantidad"],
+                        marker="o",
+                        color="#86F461",
+                        linewidth=2
+                    )
+                    ax.set_xlabel("Décadas")
+                    ax.set_ylabel("Cantidad")
+                    ax.tick_params(axis="x", rotation=45)
+                    ax.grid(axis="y", linestyle="--", alpha=0.4)
+                    st.pyplot(fig)
+                else:
+                    st.warning("Sin datos para graficar.")
+
+            with col2:
+                st.markdown("**Mapa de sismos**")
+                mapa = preparar_mapa(df_combo)
+                if not mapa.empty:
+                    st.map(mapa, zoom=3)
+                else:
+                    st.warning("Sin coordenadas para mostrar.")
+
+            st.markdown("---")
+
+            c1, c2, c3, c4 = st.columns(4)
+
+            c1.metric("Total sismos", f"{total:,}")
+            c2.metric("Magnitud promedio", f"{df_combo['MAGNITUD'].mean():.2f}")
+            c3.metric("Profundidad promedio", f"{df_combo['PROFUNDIDAD'].mean():.1f} km")
+
+            anio_max = (
+                int(df_combo["AÑO"].max())
+                if df_combo["AÑO"].notna().any()
+                else "—"
+            )
+            c4.metric("Año más reciente", anio_max)
