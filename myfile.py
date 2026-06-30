@@ -18,7 +18,6 @@ def preparar_mapa(dataframe):
         columns={"LATITUD": "lat", "LONGITUD": "lon"}
     )
 
-# --- Diccionarios de rangos reutilizables ---
 RANGOS_MAG = {
     "[0, 2)":  lambda d: d[d["MAGNITUD"] < 2],
     "[2, 3)":  lambda d: d[(d["MAGNITUD"] >= 2) & (d["MAGNITUD"] < 3)],
