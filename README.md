@@ -4,6 +4,7 @@ Aplicación web para explorar y visualizar los sismos registrados en el Perú a 
 
 ## Integrantes
 - Jhosselyn Dayanna Enriquez Aliaga
+- Jose Luis Cepida Castellares
 
 ## ¿Qué puedes hacer en la app?
 - Ver todos los sismos registrados en un gráfico y mapa
